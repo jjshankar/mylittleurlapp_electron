@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Little Url - List</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+        crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+    <style>
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            color: black;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>My Little Url</h1>
+        <hr />
+
+        <h2>The story so far...</h2>
+
+        <div class="well well-lg">
+            <table class="table" id="tblResults"> 
+                <thead>
+                    <tr>
+                        <th>
+                            Id
+                        </th>
+                        <th>
+                            Short Key
+                        </th>
+                        <th>
+                            Long Url
+                        </th>
+                        <th>
+                            Created on (UTC)
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="tblBody">
+                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="container footer">
+            <hr />
+            <p>&copy; 2018 - MyLittleUrlApp</p>
+    </div>
+   
+
+</body>
+
+<script>
+    const electron = require('electron');
+    const { ipcRenderer, shell } = electron;
+
+    // Listen and handle click events
+    document.addEventListener('click', (event) => {
+        // href events
+        if(event.target.tagName === 'A') {
+            event.preventDefault();
+            shell.openExternal(event.target.href);
+        }
+
+        // button
+        if(event.target.tagName === 'BUTTON') {
+            event.preventDefault();
+            str = event.target.id;
+            if(str.startsWith('btnUndel')){
+                ipcRenderer.send('mylittleurl:undelete', event.target.name);    
+            }
+            else{
+                ipcRenderer.send('mylittleurl:delete', event.target.name);
+            }
+        }        
+    });
+
+    document.addEventListener('dblclick', (event) => {
+        // alert(event.target.parentElement.tagName);
+        if(event.target.parentElement.tagName === "TD"){
+            event.preventDefault();
+            //showDelete(event.target.parentElement.parentElement);
+        }
+    });
+
+
+    // Listen and handle load event
+    ipcRenderer.on('mylittleurl:showlist', (event, data) => {
+        console.log(data);
+
+        // Get table
+        const tblResults = document.querySelector("#tblResults");
+                
+        // Clear table (preserve header; leave row 1)
+        while(tblResults.rows.length > 1){
+            tblResults.deleteRow(-1);
+        }
+        // Create new rows in table (preserve header; start at pos 1)
+        let dataArray = JSON.parse(data);
+        for(var i=0; i < dataArray.results.length; i++){
+            let row = tblResults.insertRow(i+1);
+            row.setAttribute("id", dataArray.results[i].shortUrl);
+            row.setAttribute("onclick", "showDelete(this)");
+            
+            let idCell = row.insertCell(0);
+            let divIdCell = document.createElement("DIV");
+            divIdCell.innerHTML = dataArray.results[i].urlId;
+            if(dataArray.results[i].isDeleted)
+                divIdCell.setAttribute("style", "font-style:italic; text-decoration:line-through");
+            idCell.appendChild(divIdCell);
+            
+            let sUrlCell = row.insertCell(1);
+            let divSUrlCell = document.createElement("DIV");
+            divSUrlCell.innerHTML = dataArray.results[i].shortUrl;
+            if(dataArray.results[i].isDeleted)
+                divSUrlCell.setAttribute("style", "font-style:italic; text-decoration:line-through");
+            sUrlCell.appendChild(divSUrlCell);
+            
+            let lUrlCell = row.insertCell(2);
+            let divLUrlCell = document.createElement("DIV");
+            let anchor = document.createElement('A');
+            anchor.text = anchor.href = dataArray.results[i].longUrl;
+            anchor.target = '_blank';
+            divLUrlCell.appendChild(anchor);
+            if(dataArray.results[i].isDeleted)
+                divLUrlCell.setAttribute("style", "font-style:italic; text-decoration:line-through");
+            lUrlCell.appendChild(divLUrlCell);
+
+            // Create a new hidden data div for this row
+            let dataDiv = document.createElement("DIV");
+            dataDiv.setAttribute("id", "dataDiv_"+ dataArray.results[i].shortUrl);
+            dataDiv.setAttribute("style", "align:right; display:none; right:0px; font-style:italic; text-decoration:none");
+
+            let spanEl = document.createElement("DIV");
+            spanEl.setAttribute("align", "right");
+            spanEl.removeAttribute("style");
+            if(dataArray.results[i].isDeleted){
+                let delDt = new Date(dataArray.results[i].deletedTime);
+                let purgeDt = new Date(dataArray.results[i].purgeDate);
+                spanEl.appendChild(document.createTextNode("Deleted on: " + delDt.toLocaleString()));
+                spanEl.appendChild(document.createElement("BR"));
+                spanEl.appendChild(document.createTextNode("Will be purged on: " + purgeDt.toLocaleString()));
+                spanEl.setAttribute("style", "font-style:italic; text-decoration:underline");
+            }
+            else {
+                let accessDt = new Date(dataArray.results[i].lastAccessedTime);
+                if(accessDt.getTime() < 0)
+                    spanEl.appendChild(document.createTextNode("Last accessed on: Never"));
+                else
+                    spanEl.appendChild(document.createTextNode("Last accessed on: " + accessDt.toLocaleString()));
+                spanEl.setAttribute("style", "font-style:normal; text-decoration:underline");
+            }
+            dataDiv.appendChild(spanEl);
+            lUrlCell.appendChild(dataDiv);
+
+            let dateCell = row.insertCell(3);
+            dateCell.setAttribute("align", "right");
+            let divDateCell = document.createElement("DIV");
+            divDateCell.setAttribute("align", "right")
+            let dt = new Date(dataArray.results[i].creationTime);
+            divDateCell.innerHTML = dt.toLocaleString();
+            dateCell.appendChild(divDateCell);
+
+            // Create a new hidden button for this row
+            let delDiv = document.createElement("DIV");
+            delDiv.setAttribute("id", "div_"+ dataArray.results[i].shortUrl);
+            delDiv.setAttribute("style", "align:right; display:none;");
+            
+            let delBtn = document.createElement("BUTTON");
+            delBtn.setAttribute("name", dataArray.results[i].shortUrl);
+
+            if(dataArray.results[i].isDeleted){
+                delBtn.setAttribute("id", "btnUndel_"+ dataArray.results[i].shortUrl);
+                delBtn.setAttribute("class", "btn btn-success");
+                delBtn.appendChild(document.createTextNode("Restore"));
+            }
+            else{
+                delBtn.setAttribute("id", "btnDel_"+ dataArray.results[i].shortUrl);
+                delBtn.setAttribute("class", "btn btn-danger");
+                delBtn.appendChild(document.createTextNode("Delete"));
+            }
+            delDiv.appendChild(delBtn);
+            dateCell.appendChild(delDiv);
+        }
+    });
+
+
+</script>
+
+
+<script>
+    window.$ = window.jQuery = require('jquery'); 
+
+    // Add event listeners to tr
+    function showDelete(row) {
+        var id = row.id;
+        $("#div_" + id).slideDown(500).delay(2000).slideUp(500);
+        $("#dataDiv_" + id).slideDown(500).delay(2000).slideUp(500);
+        
+    }
+
+</script>
+
+</html>

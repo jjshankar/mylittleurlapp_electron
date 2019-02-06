@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>My Little Url - Create a Little URL</title>
+
+    <script>
+        window.$ = window.jQuery = require('jquery');
+
+        $(document).ready(function () {
+            //$('[data-toggle="popover"]').popover(); 
+            $("#copyMessage").hide();
+            $('#divAddResult').hide();
+            $('#divError').hide();
+
+            $("#btnCopy").click(function () {
+                $("#urlAddResult").select();
+                if (document.execCommand("copy"))
+                    $("#copyMessage").slideDown(500).delay(2000).slideUp(500);
+            });
+        });
+
+        $('#copyMessage .close').click(function () {
+            $(this).parent().hide();
+        });
+
+        function clearForm() {
+            $('#urlForm').trigger('reset');
+            $('#divAddResult').hide();
+            $('#divError').hide();
+        }
+    </script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+        crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+
+    <style>
+        .footer {
+                    position: fixed;
+                    left: 0;
+                    bottom: 0;
+                    width: 100%;
+                    background-color: white;
+                    color: black;
+                    text-align: left;
+                }
+    </style>
+</head>
+
+
+
+
+<body style="background-color:rgb(255, 255, 255)">
+    <div class="container">
+        <h1>My Little Url</h1>
+        <hr />
+        <form id="urlForm" method="post">
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        <i class="glyphicon glyphicon-barcode" title="Clear form" style="cursor:pointer" onclick="clearForm()"></i>
+                    </span>
+                    <input id="urlToEncode" class="form-control input-lg" name="urlToEncode" placeholder="Encode your URL here"
+                        required type="url" value="" />
+                </div>
+                <div class="row">
+                    &nbsp;
+                </div>
+                <div class="row">
+                    <div class="col-md-2 col-md-offset-5">
+                        <button class="btn btn-default" type="submit">Encode</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="container well well-lg" id="divAddResult" style="display:none">
+        <h2>Your Little Url is: <small id="smallReductionPct">( 9.99% shorter)</small></h2>
+        <div class=input-group>
+            <span class="input-group-addon">
+                <i class="glyphicon glyphicon-link" title="Click to copy" style="cursor:pointer" id="btnCopy"></i>
+            </span>
+            <input readonly id="urlAddResult" class="form-control input-lg" name="urlAddResult" style="background-color:ghostwhite"
+                value="" />
+        </div>
+        <div id="copyMessage" class="alert alert-success">
+            <strong>Copied</strong> to clipboard.
+        </div>
+    </div>
+
+    <div class="container alert alert-warning" id="divError" style="display:none">
+        <h2>Error Message</h2>
+    </div>
+
+    <div class="container footer">
+        <hr />
+        <p>&copy; 2018 - MyLittleUrlApp</p>
+    </div>
+
+    <script>
+        const electron = require('electron');
+        const { ipcRenderer } = electron;
+
+        // Handle form submit
+        const form = document.querySelector('#urlForm');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const item = document.querySelector('#urlToEncode').value;
+            ipcRenderer.send('mylittleurl:add', item);
+        });
+
+        // Handle show result
+        ipcRenderer.on('mylittleurl:show', (event, item, reductionText) => {
+            const divError = document.querySelector('#divError');
+            const divAddResult = document.querySelector("#divAddResult");
+            const inputResult = document.querySelector("#urlAddResult");
+            const reductionPct = document.querySelector("#smallReductionPct");
+
+            reductionPct.innerHTML = '(' + reductionText + '% shorter)';
+            inputResult.value = item;
+            divAddResult.style.display = 'block';
+            divError.style.display = 'none';
+        });
+
+        ipcRenderer.on('mylittleurl:error', (event, errorMessage) => {
+            console.log(errorMessage);
+            debugger;
+            const divError = document.querySelector('#divError');
+            const divAddResult = document.querySelector("#divAddResult");
+
+            divError.innerHTML = '<h2>' + errorMessage + '</h2>';
+            divError.style.display = 'block';
+            divAddResult.style.display = 'none';
+
+        });
+
+
+
+    </script>
+
+</body>
+
+</html>

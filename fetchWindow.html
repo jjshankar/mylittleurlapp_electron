@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Little Url - Fetch</title>
+
+    <script>
+        window.$ = window.jQuery = require('jquery');
+
+        function clearForm() {
+            $('#fetchForm').trigger('reset');
+            $('#divFetchResult').hide();
+            $('#divError').hide();
+        }
+    </script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+        crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+
+    <style>
+        .footer {
+                    position: fixed;
+                    left: 0;
+                    bottom: 0;
+                    width: 100%;
+                    background-color: white;
+                    color: black;
+                    text-align: left;
+                }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>My Little Url - Retrieve</h1>
+        <hr />
+
+        <form method="post" id="fetchForm">
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        <i class="glyphicon glyphicon-wrench" title="Clear form" style="cursor:pointer" onclick="clearForm()"></i>
+                    </span>
+                    <input id="urlkey" class="form-control input-lg" name="urlkey" placeholder="Enter Your Little Url here"
+                        required type="text" data-val="true" data-val-length="Key must be 3 characters in length."
+                        data-val-length-max="3" data-val-length-min="3" value="" />
+                </div>
+                <div class="row">
+                    &nbsp;
+                </div>
+                <div class="row">
+                    <div class="col-md-2 col-md-offset-5">
+                        <button class="btn btn-default" type="submit">Fetch</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="well well-lg" id="divFetchResult" style="display:none">
+            <h2>Your <i>Not-so-</i>Little Url is:</h2>
+            <div class=input-group>
+                <span class="input-group-addon">
+                    <i class="glyphicon glyphicon-link"></i>
+                </span>
+                <span readonly id="spnUrlDecoded" class="form-control input-lg" name="spnUrlDecoded" style="background-color:ghostwhite">
+                    <a id="aUrlDecoded" target="_blank"></a>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container alert alert-warning" id="divError" style="display:none" ;>
+        <h2>Error Mesage</h2>
+    </div>
+
+    <div class="container footer">
+        <hr />
+        <p>&copy; 2018 - MyLittleUrlApp</p>
+    </div>
+
+</body>
+
+<script>
+    const electron = require('electron');
+    const { ipcRenderer, webcontents, shell } = electron;
+
+    const form = document.querySelector('form');
+    const aUrlDecoded = document.querySelector("#aUrlDecoded");
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const key = document.querySelector('#urlkey').value;
+        ipcRenderer.send('mylittleurl:fetch', key);
+    });
+
+    // Listen and handle for result event
+    aUrlDecoded.addEventListener('click', (event) => {
+        event.preventDefault();
+        shell.openExternal(event.target.href);
+    });
+
+    ipcRenderer.on('mylittleurl:result', (event, item) => {
+        console.log('mylittleurl:result - ' + item);
+
+        const divFetchResult = document.querySelector("#divFetchResult");
+        const divError = document.querySelector("#divError");
+
+        if (item != null) {
+            console.log('item = ' + item);
+            // Set result in <a> tag
+            aUrlDecoded.href = item;
+            aUrlDecoded.innerHTML = item;
+
+            // Show div
+            divFetchResult.style.display = 'block';
+            divError.style.display = 'none';
+        }
+        else {
+            divFetchResult.style.display = 'none';
+            divError.style.display = 'block';
+            divError.innerHTML = "<h2>Unkown error!</h2>"
+        }
+    });
+
+    ipcRenderer.on('mylittleurl:error', (event, errorMessage) => {
+        const divFetchResult = document.querySelector("#divFetchResult");
+        const divError = document.querySelector("#divError");
+
+        divFetchResult.style.display = 'none';
+        divError.innerHTML = '<h2>' + errorMessage + '</h2>';
+        divError.style.display = 'block';
+    });
+
+</script>
+
+</html>
