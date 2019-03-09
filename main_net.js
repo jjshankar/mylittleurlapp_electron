@@ -6,10 +6,12 @@ const path = require('path');
 const APPNAME = 'MyLittleURL (net)'
 
 // REST API 
-const Protocol = "http:"
+const Protocol = "https:"
 //const ServiceAddressUri = 'localhost:32780';        // When debugging this app on localhost (API & mongodb in docker)
 //const ServiceAddressUri = 'localhost:53284';        // When debugging this app on localhost API (mongodb in docker)
-const ServiceAddressUri = 'localhost:32680';        // When debugging this app on localhost (API in docker, Azure storage)
+// const ServiceAddressUri = 'localhost:32680';        // When debugging this app on localhost (API in docker, Azure storage)
+// const ServiceAddressUri = 'localhost:5001';        // When debugging this app on localhost (API localhost, Azure storage)
+const ServiceAddressUri = 'jjs-mylittleazurlapi.azurewebsites.net';        // When debugging this app on localhost (API on Azure, Azure storage)
 const BaseAddressPrefix = 'http://mylittleurl.us/';        // Public site address for prefix
 
 
@@ -72,7 +74,6 @@ const mainMenuTemplate = [
                 accelerator: 'CmdOrCtrl+L',
                 click() {
                     // Load the listWindow HTML page in main window
-                    loadMainWindow('listWindow.html');
                     loadList();
                 }
             }
@@ -266,7 +267,6 @@ ipcMain.on('mylittleurl:delete', (event, item) => {
                 console.log("DELETE Success: " + body);
                 if(item === result.shortUrl){
                     // Load the listWindow HTML page in main window
-                    loadMainWindow('listWindow.html');
                     loadList();
                 }
             }
@@ -303,7 +303,6 @@ ipcMain.on('mylittleurl:undelete', (event, item) => {
                 console.log("UNDELETE Success: " + body);
                 if(item === result.shortUrl){
                     // Load the listWindow HTML page in main window
-                    loadMainWindow('listWindow.html');
                     loadList();
                 }
             }
@@ -345,6 +344,8 @@ function loadList() {
         });
     });
     request.end();
+    loadMainWindow('listWindow.html');
+
 }
 
 // Functions
