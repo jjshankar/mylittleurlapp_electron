@@ -6,18 +6,19 @@ const path = require('path');
 const APPNAME = 'MyLittleURL (net)'
 
 // REST API 
-const Protocol = "https:"
+const Protocol = "http:"
 //const ServiceAddressUri = 'localhost:32780';        // When debugging this app on localhost (API & mongodb in docker)
-//const ServiceAddressUri = 'localhost:53284';        // When debugging this app on localhost API (mongodb in docker)
+const ServiceAddressUri = 'localhost:53284';        // When debugging this app on localhost API (mongodb in docker)
 // const ServiceAddressUri = 'localhost:32680';        // When debugging this app on localhost (API in docker, Azure storage)
 // const ServiceAddressUri = 'localhost:5001';        // When debugging this app on localhost (API localhost, Azure storage)
-const ServiceAddressUri = 'jjs-mylittleazurlapi.azurewebsites.net';        // When debugging this app on localhost (API on Azure, Azure storage)
-const BaseAddressPrefix = 'http://mylittleurl.us/';        // Public site address for prefix
+//const ServiceAddressUri = 'jjs-mylittleazurlapi.azurewebsites.net';        // When debugging this app on localhost (API on Azure, Azure storage)
+const BaseAddressPrefix = 'http://lilurl.us/';        // Public site address for prefix
 
 
 const { app, BrowserWindow, Menu, ipcMain, net, shell } = electron;
 
 let mainWindow;
+let serviceAlive;
 
 // Create menu template
 const mainMenuTemplate = [
@@ -128,7 +129,30 @@ const mainMenuTemplate = [
 
 // Listen for app.ready
 app.on('ready', () => {
-    mainWindow = new BrowserWindow({});
+    // Test service health
+    // HttpGet: http://<service>/api/littleurl
+    const endPoint = Protocol + '//' + ServiceAddressUri + '/api/littleurl';
+    console.log('[app.on(ready)]~ ' + endPoint);
+
+    // Call using net.request 
+    const request = net.request(endPoint, (response) => {
+        response.on('data', () => {
+            if (response.statusCode != 200) {
+                console.log('[app.on(ready)]~ error: ' + response.statusMessage);
+                serviceAlive = false;
+            }
+            else {
+                serviceAlive = true;
+            }
+        })
+    });
+    request.end();
+
+    mainWindow = new BrowserWindow({
+        webPreferences: {
+            nodeIntegration: true
+        }
+    });
     loadMainWindow('mainWindow.html');
 
     // Build menu from template
@@ -136,12 +160,15 @@ app.on('ready', () => {
     Menu.setApplicationMenu(mainMenu);
 
     mainWindow.on('onFocus', () => {
+        console.log('[mainWindow.on(focus)]:')
         if (!mainWindow.enabled) {
             event.preventDefault();
             if (aboutWindow)
                 aboutWindow.flashFrame();
         }
     });
+
+
 });
 
 
@@ -178,7 +205,9 @@ ipcMain.on('mylittleurl:add', (event, item) => {
 
         // Call using net.request 
         try {
-            const request = net.request(options, (response) => {
+            const request = net.request(options);
+            request.setHeader('Client-Secret', 'secretKey');
+            request.on('response', (response) => {
                 response.on('data', (body) => {
                     console.log('body: ' + body);
 
@@ -221,7 +250,9 @@ ipcMain.on('mylittleurl:fetch', (event, item) => {
     console.log(endPoint);
 
     // Call using net.request 
-    const request = net.request(endPoint, (response) => {
+    const request = net.request(endPoint);
+    request.setHeader('Client-Secret', 'secretKey');
+    request.on('response', (response) => {
         response.on('data', (body) => {
             console.log('body: ' + body);
 
@@ -253,7 +284,9 @@ ipcMain.on('mylittleurl:delete', (event, item) => {
     };
 
     // Call using net.request 
-    const request = net.request(options, (response) => {
+    const request = net.request(options);
+    request.setHeader('Client-Secret', 'secretKey');
+    request.on('response', (response) => {
         response.on('data', (body) => {
             console.log('deleted body: ' + body);
 
@@ -289,7 +322,9 @@ ipcMain.on('mylittleurl:undelete', (event, item) => {
     };
 
     // Call using net.request 
-    const request = net.request(options, (response) => {
+    const request = net.request(options);
+    request.setHeader('Client-Secret', 'secretKey');
+    request.on('response', (response) => {
         response.on('data', (body) => {
             console.log('undelete body: ' + body);
 
@@ -315,18 +350,20 @@ ipcMain.on('mylittleurl:undelete', (event, item) => {
 function loadList() {
     // HttpGet: http://<service>/api/littleurl/<key>
     const endPoint = Protocol + '//' + ServiceAddressUri + '/api/littleurl';
-    console.log(endPoint);
+    console.log('Endpoint for loadList:' + endPoint);
 
     // Call using net.request 
     const request = net.request(endPoint);
+    request.setHeader('Client-Secret', 'secretKey');
     request.on("response", (response) => {
         var result = "";
         response.on('data', (body) => {
             console.log('body: ' + body);
+            console.log('onData:response.statusCode: ' + response.statusCode.toString(10));
 
             if (response.statusCode >= 300) {
                 console.log('error: ' + response.statusMessage);
-                mainWindow.webContents.send('mylittleurl:error', response.statusMessage);
+                mainWindow.webContents.send('mylittleurl:listerror', response.statusMessage);
             }
             else {
                 // Wrap JSON array as proper JSON 
@@ -335,12 +372,20 @@ function loadList() {
         });
         response.on('end', () => {
             console.log('Reponse ended');
+            console.log('onEnd:response.statusCode: ' + response.statusCode.toString(10));
             // Send event to render page
-            mainWindow.webContents.on('did-finish-load', () => {
-                console.log('sending mylittleurl:showlist');
-                mainWindow.webContents.send('mylittleurl:showlist', result);
-                console.log('sent');
-            });
+            if (response.statusCode >= 300) {
+                console.log('onEnd.error: ' + response.statusMessage);
+                console.log('sending mylittleurl:listerror');
+                mainWindow.webContents.send('mylittleurl:listerror', response.statusMessage);
+            }
+            else {
+                mainWindow.webContents.on('did-finish-load', () => {
+                    console.log('sending mylittleurl:showlist');
+                    mainWindow.webContents.send('mylittleurl:showlist', result);
+                    console.log('sent');            
+                });
+            }
         });
     });
     request.end();
