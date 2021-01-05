@@ -9,7 +9,7 @@
   "author": "Jesus Shankar",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.21.1",
     "electron": "^7.2.4",
     "jquery": "^3.5.0",
     "xmlhttprequest": "^1.8.0"
