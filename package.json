@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.18.0",
-    "electron": "^7.2.4",
+    "electron": "^15.5.5",
     "jquery": "^3.5.0",
     "xmlhttprequest": "^1.8.0"
   }
